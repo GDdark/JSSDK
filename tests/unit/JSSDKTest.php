@@ -34,12 +34,7 @@ class JSSDKTest extends \Codeception\Test\Unit
         $this->tester->assertEquals($url, $signPackage['url']);
         $this->tester->assertArrayHasKey('signature', $signPackage);
         $this->tester->assertArrayHasKey('rawString', $signPackage);
-        $this->tester->assertEquals(http_build_query([
-            'jsapi_ticket' => $ticketResponse['ticket'],
-            'noncestr' => $signPackage['nonceStr'],
-            'timestamp' => $signPackage['timestamp'],
-            'url' => $url,
-        ]), $signPackage['rawString']);
+        $this->tester->assertEquals(sprintf('jsapi_ticket=%s&noncestr=%s&timestamp=%s&url=%s', $ticketResponse['ticket'], $signPackage['nonceStr'], $signPackage['timestamp'], $url), $signPackage['rawString']);
         $this->tester->assertEquals(sha1($signPackage['rawString']), $signPackage['signature']);
     }
 

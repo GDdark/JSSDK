@@ -38,19 +38,13 @@ class JSSDK
     public function getSignPackage()
     {
         $nonceStr = $this->createNonceStr();
-
-        $queryData = [
-            'jsapi_ticket' => $this->getJsApiTicket(),
-            'noncestr' => $nonceStr,
-            'timestamp' => time(),
-            'url' => $this->url,
-        ];
-        $queryString = http_build_query($queryData);
+        $timestamp = time();
+        $queryString = sprintf('jsapi_ticket=%s&noncestr=%s&timestamp=%s&url=%s', $this->getJsApiTicket(), $nonceStr, $timestamp, $this->url);
 
         return [
             'appId' => $this->appId,
             'nonceStr' => $nonceStr,
-            'timestamp' => time(),
+            'timestamp' => $timestamp,
             'url' => $this->url,
             'signature' => sha1($queryString),
             'rawString' => $queryString,
