@@ -77,16 +77,16 @@ class JSSDK
     {
         $ticketData = is_null($this->redis) ? null : json_decode($this->redis->get($this->getJsApiTicketKey()), true);
 
-        if (is_null($ticketData) || $ticketData['expire_time'] < time()) {
+        if (is_null($ticketData)) {
             $request = $this->messageFactory->createRequest(
                 'GET',
                 'https://api.weixin.qq.com/cgi-bin/ticket/getticket?type=jsapi&access_token=' . $this->getAccessToken()
             );
 
-            $ticket = json_decode((string) $this->httpClient->sendRequest($request)->getBody())->ticket;
+            $ticket = json_decode((string) $this->httpClient->sendRequest($request)->getBody(), true)['ticket'];
 
             if ($ticket) {
-                !is_null($this->redis) && $this->redis->set($this->getJsApiTicketKey(), json_encode(['expire_time' => time() + 7000, 'jsapi_ticket' => $ticket]));
+                !is_null($this->redis) && $this->redis->set($this->getJsApiTicketKey(), json_encode(['jsapi_ticket' => $ticket]), 6500);
             }
 
             return $ticket;
@@ -104,7 +104,7 @@ class JSSDK
     {
         $accessTokenData = is_null($this->redis) ? null : json_decode($this->redis->get($this->getAccessTokenKey()), true);
 
-        if (is_null($accessTokenData) || $accessTokenData['expire_time'] < time()) {
+        if (is_null($accessTokenData)) {
             $request = $this->messageFactory->createRequest(
                 'GET',
                 "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=$this->appId&secret=$this->appIdSecret"
@@ -113,7 +113,7 @@ class JSSDK
             $accessTokenData = json_decode((string) $this->httpClient->sendRequest($request)->getBody(), true);
 
             if ($accessTokenData['access_token']) {
-                !is_null($this->redis) && $this->redis->set($this->getAccessTokenKey(), json_encode(['expire_time' => time() + 7000, 'access_token' => $accessTokenData['access_token']]));
+                !is_null($this->redis) && $this->redis->set($this->getAccessTokenKey(), json_encode(['access_token' => $accessTokenData['access_token']]), 6500);
             } else {
                 throw new \Exception($accessTokenData['errmsg']);
             }
