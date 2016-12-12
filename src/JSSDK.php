@@ -24,7 +24,6 @@ class JSSDK
 
     private $appId;
     private $appSecret;
-    private $protocol;
 
     public function __construct($appId, $appSecret, HttpClient $httpClient, MessageFactory $messageFactory, $url, Redis $redis = null)
     {
