@@ -63,7 +63,7 @@ class JSSDK
         $len = strlen($chars);
         $str = '';
         for ($i = 0; $i < $length; ++$i) {
-            $str .= substr($chars, mt_rand(0, $len - 1), 1);
+            $str .= $chars[mt_rand(0, $len - 1)];
         }
 
         return $str;
