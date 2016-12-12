@@ -23,40 +23,36 @@ class JSSDK
     private $redis;
 
     private $appId;
-    private $appIdSecret;
+    private $appSecret;
     private $protocol;
 
-    public function __construct($id, $idSecret, HttpClient $httpClient, MessageFactory $messageFactory, Redis $redis = null, $protocol = null)
+    public function __construct($appId, $appSecret, HttpClient $httpClient, MessageFactory $messageFactory, $url, Redis $redis = null)
     {
-        $this->appId = $id;
-        $this->appIdSecret = $idSecret;
+        $this->appId = $appId;
+        $this->appSecret = $appSecret;
         $this->httpClient = $httpClient;
         $this->messageFactory = $messageFactory;
+        $this->url = $url;
         $this->redis = $redis;
-        $this->protocol = is_null($protocol) ?
-            (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? 'https://' : 'http://'
-            : $protocol;
     }
 
     public function getSignPackage()
     {
-        $url = $this->protocol . $_SERVER['HTTP_HOST'] ?: '' . $_SERVER['REQUEST_URI'] ?: '';
         $nonceStr = $this->createNonceStr();
 
         $queryData = [
             'jsapi_ticket' => $this->getJsApiTicket(),
             'noncestr' => $nonceStr,
             'timestamp' => time(),
-            'url' => $url,
+            'url' => $this->url,
         ];
-
         $queryString = http_build_query($queryData);
 
         return [
             'appId' => $this->appId,
             'nonceStr' => $nonceStr,
             'timestamp' => time(),
-            'url' => $url,
+            'url' => $this->url,
             'signature' => sha1($queryString),
             'rawString' => $queryString,
         ];
@@ -73,11 +69,11 @@ class JSSDK
         return $str;
     }
 
-    public function getJsApiTicket()
+    private function getJsApiTicket()
     {
-        $ticketData = is_null($this->redis) ? null : json_decode($this->redis->get($this->getJsApiTicketKey()), true);
+        $ticket = is_null($this->redis) ? null : ($this->redis->get($this->getJsApiTicketKey()) ?: null);
 
-        if (is_null($ticketData)) {
+        if (is_null($ticket)) {
             $request = $this->messageFactory->createRequest(
                 'GET',
                 'https://api.weixin.qq.com/cgi-bin/ticket/getticket?type=jsapi&access_token=' . $this->getAccessToken()
@@ -86,14 +82,14 @@ class JSSDK
             $ticketData = json_decode($this->httpClient->sendRequest($request)->getBody(), true);
 
             if (is_array($ticketData) && isset($ticketData['ticket'])) {
-                !is_null($this->redis) && $this->redis->set($this->getJsApiTicketKey(), json_encode(['jsapi_ticket' => $ticketData]), 6500);
+                !is_null($this->redis) && $this->redis->set($this->getJsApiTicketKey(), $ticketData['ticket'], $ticketData['expires_in'] - 200);
             } else {
-                throw new Exception('getJsApiTicket error');
+                throw new Exception($ticketData['errmsg']);
             }
 
             return $ticketData['ticket'];
         } else {
-            return $ticketData['jsapi_ticket'];
+            return $ticket;
         }
     }
 
@@ -102,27 +98,27 @@ class JSSDK
         return 'wx:jsapi_ticket';
     }
 
-    public function getAccessToken()
+    private function getAccessToken()
     {
-        $accessTokenData = is_null($this->redis) ? null : json_decode($this->redis->get($this->getAccessTokenKey()), true);
+        $accessToken = is_null($this->redis) ? null : ($this->redis->get($this->getAccessTokenKey()) ?: null);
 
-        if (is_null($accessTokenData)) {
+        if (is_null($accessToken)) {
             $request = $this->messageFactory->createRequest(
                 'GET',
-                "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=$this->appId&secret=$this->appIdSecret"
+                "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=$this->appId&secret=$this->appSecret"
             );
 
-            $accessTokenData = json_decode((string) $this->httpClient->sendRequest($request)->getBody(), true);
+            $accessTokenData = json_decode($this->httpClient->sendRequest($request)->getBody(), true);
 
             if (is_array($accessTokenData) && isset($accessTokenData['access_token'])) {
-                !is_null($this->redis) && $this->redis->set($this->getAccessTokenKey(), json_encode(['access_token' => $accessTokenData['access_token']]), 6500);
+                !is_null($this->redis) && $this->redis->set($this->getAccessTokenKey(), $accessTokenData['access_token'], $accessTokenData['expires_in'] - 200);
             } else {
                 throw new Exception($accessTokenData['errmsg']);
             }
 
             return $accessTokenData['access_token'];
         } else {
-            return $accessTokenData['access_token'];
+            return $accessToken;
         }
     }
 
