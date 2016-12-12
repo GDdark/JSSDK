@@ -83,13 +83,15 @@ class JSSDK
                 'https://api.weixin.qq.com/cgi-bin/ticket/getticket?type=jsapi&access_token=' . $this->getAccessToken()
             );
 
-            $ticket = json_decode((string) $this->httpClient->sendRequest($request)->getBody(), true)['ticket'];
+            $ticketData = json_decode($this->httpClient->sendRequest($request)->getBody(), true);
 
-            if ($ticket) {
-                !is_null($this->redis) && $this->redis->set($this->getJsApiTicketKey(), json_encode(['jsapi_ticket' => $ticket]), 6500);
+            if (is_array($ticketData) && isset($ticketData['ticket'])) {
+                !is_null($this->redis) && $this->redis->set($this->getJsApiTicketKey(), json_encode(['jsapi_ticket' => $ticketData]), 6500);
+            } else {
+                throw new Exception('getJsApiTicket error');
             }
 
-            return $ticket;
+            return $ticketData['ticket'];
         } else {
             return $ticketData['jsapi_ticket'];
         }
@@ -112,10 +114,10 @@ class JSSDK
 
             $accessTokenData = json_decode((string) $this->httpClient->sendRequest($request)->getBody(), true);
 
-            if ($accessTokenData['access_token']) {
+            if (is_array($accessTokenData) && isset($accessTokenData['access_token'])) {
                 !is_null($this->redis) && $this->redis->set($this->getAccessTokenKey(), json_encode(['access_token' => $accessTokenData['access_token']]), 6500);
             } else {
-                throw new \Exception($accessTokenData['errmsg']);
+                throw new Exception($accessTokenData['errmsg']);
             }
 
             return $accessTokenData['access_token'];
