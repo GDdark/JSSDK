@@ -24,8 +24,9 @@ class JSSDK
 
     private $appId;
     private $appSecret;
+    private $cacheKey;
 
-    public function __construct($appId, $appSecret, HttpClient $httpClient, MessageFactory $messageFactory, $url, Redis $redis = null)
+    public function __construct($appId, $appSecret, HttpClient $httpClient, MessageFactory $messageFactory, $url, Redis $redis = null, $cacheKey = null)
     {
         $this->appId = $appId;
         $this->appSecret = $appSecret;
@@ -33,6 +34,7 @@ class JSSDK
         $this->messageFactory = $messageFactory;
         $this->url = $url;
         $this->redis = $redis;
+        $this->cacheKey = $cacheKey;
     }
 
     public function getSignPackage()
@@ -118,6 +120,6 @@ class JSSDK
 
     private function getAccessTokenKey()
     {
-        return 'wx:access_token';
+        return $this->cacheKey ?? 'wx:access_token';
     }
 }
